@@ -3,6 +3,10 @@ package app
 import (
 	"context"
 	"errors"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	// STEP 5-1: uncomment this line
 	// _ "github.com/mattn/go-sqlite3"
 )
@@ -12,6 +16,7 @@ var errImageNotFound = errors.New("image not found")
 type Item struct {
 	ID   int    `db:"id" json:"-"`
 	Name string `db:"name" json:"name"`
+	Category string `db:"name" json:"category"`
 }
 
 // Please run `go generate ./...` to generate the mock implementation
@@ -20,6 +25,7 @@ type Item struct {
 //go:generate go run go.uber.org/mock/mockgen -source=$GOFILE -package=${GOPACKAGE} -destination=./mock_$GOFILE
 type ItemRepository interface {
 	Insert(ctx context.Context, item *Item) error
+	Get(ctx context.Context)([]Item, error)
 }
 
 // itemRepository is an implementation of ItemRepository
@@ -36,8 +42,51 @@ func NewItemRepository() ItemRepository {
 // Insert inserts an item into the repository.
 func (i *itemRepository) Insert(ctx context.Context, item *Item) error {
 	// STEP 4-2: add an implementation to store an item
+	
+	itemSlice := []Item{}
+	data, err := os.ReadFile(i.fileName)
+	if err == nil {
+		if err := json.Unmarshal(data, &itemSlice); err != nil {
+			return fmt.Errorf("Could not parse JSON, %w", err)
+		}
+	}
+	
+	itemSlice = append(itemSlice, *item);
+	data, err = json.MarshalIndent(itemSlice, "", " ")
+	if err != nil {
+		return fmt.Errorf("Could not marshal JSON, %w", err)
+	}
+	
+	err = os.WriteFile(i.fileName, data, 0644)
+	fmt.Println("filename %s", i.fileName)
+	path, err := filepath.Abs(i.fileName)
+	fmt.Println("File path to be used: %s", path)
+
+	if err != nil {
+		return fmt.Errorf("Could not write to file, %w", err)
+	}
 
 	return nil
+}
+
+func (i *itemRepository) Get(ctx context.Context) ([]Item, error) {
+	data, err := os.ReadFile(i.fileName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Return empty slice
+			return []Item{}, nil
+		} 
+		return nil, fmt.Errorf("Could not read file, %w", err)
+	}
+
+	var items []Item
+	if len(data) > 0 {
+		err := json.Unmarshal(data, &items)
+		if err != nil {
+			return nil, fmt.Errorf("Error unmarshalling JSON, %w", err)
+		}
+	}
+	return items, nil
 }
 
 // StoreImage stores an image and returns an error if any.
