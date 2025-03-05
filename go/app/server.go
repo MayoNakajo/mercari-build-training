@@ -41,7 +41,7 @@ func (s Server) Run() int {
 
 	// set up routes
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /", h.Hello)
+	mux.HandleFunc("GET /items", h.GetItem)
 	mux.HandleFunc("POST /items", h.AddItem)
 	mux.HandleFunc("GET /images/{filename}", h.GetImage)
 
@@ -78,7 +78,7 @@ func (s *Handlers) Hello(w http.ResponseWriter, r *http.Request) {
 
 type AddItemRequest struct {
 	Name string `form:"name"`
-	// Category string `form:"category"` // STEP 4-2: add a category field
+        Category string `form:"category"` // STEP 4-2: add a category field
 	Image []byte `form:"image"` // STEP 4-4: add an image field
 }
 
@@ -91,6 +91,7 @@ func parseAddItemRequest(r *http.Request) (*AddItemRequest, error) {
 	req := &AddItemRequest{
 		Name: r.FormValue("name"),
 		// STEP 4-2: add a category field
+		Category: r.FormValue("category"),
 	}
 
 	// STEP 4-4: add an image field
@@ -101,6 +102,10 @@ func parseAddItemRequest(r *http.Request) (*AddItemRequest, error) {
 	}
 
 	// STEP 4-2: validate the category field
+	if req.Category == "" {
+		return nil, errors.New("category is required")
+	}
+
 	// STEP 4-4: validate the image field
 	return req, nil
 }
@@ -126,6 +131,7 @@ func (s *Handlers) AddItem(w http.ResponseWriter, r *http.Request) {
 	item := &Item{
 		Name: req.Name,
 		// STEP 4-2: add a category field
+		Category: req.Category,
 		// STEP 4-4: add an image field
 	}
 	message := fmt.Sprintf("item received: %s", item.Name)
@@ -145,6 +151,27 @@ func (s *Handlers) AddItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (s *Handlers) GetItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	items, err := s.itemRepo.Get(ctx)
+	
+	if err != nil {
+		slog.Error("Error retrieving items", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	rsp := map[string][]Item{"items": items}
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(rsp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 }
 
 // storeImage stores an image and returns the file path and an error if any.
