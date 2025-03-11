@@ -58,51 +58,6 @@ func NewItemRepository(database *sql.DB) ItemRepository {
 
 // Insert inserts an item into the repository.
 func (i *itemRepository) Insert(ctx context.Context, item *Item) error {
-	// STEP 4-2: add an implementation to store an item
-	// Check if file exists
-	// _, err := os.Stat(i.fileName)
-	// if os.IsNotExist(err) {
-	// 	// Create file when it does not exist
-	// 	newFile, createErr := os.Create(i.fileName)
-	// 	// Handle error
-	// 	if createErr != nil {
-	// 		return errors.New("error creating file")
-	// 	}
-	// 	defer newFile.Close()
-
-	// 	// Initialize new slice
-	// 	newItem := []*Item{item}
-	// 	// Convert to JSON
-	// 	newItemJSON, _ := json.Marshal(newItem)
-
-	// 	_, err := newFile.Write(newItemJSON)
-	// 	if err != nil {
-	// 		return errors.New("error writing as JSON")
-	// 	}
-	// } else {
-	// 	var items []*Item
-	// 	file, openErr := os.OpenFile(i.fileName, os.O_RDWR, 0644)
-
-	// 	if openErr != nil {
-	// 		return errors.New("error opening file")
-	// 	}
-	// 	defer file.Close()
-
-	// 	items, err := i.GetAllItems(ctx)
-	// 	if err != nil {
-	// 		return errors.New("error retrieving items")
-	// 	}
-
-	// 	// Convert to JSON with new item added to existing
-	// 	itemJSON, _ := json.Marshal(append(items, item))
-
-	// 	_, err = file.Write(itemJSON)
-	// 	if err != nil {
-	// 		return errors.New("error writing JSON to file")
-	// 	}
-
-	// }
-	// return nil
 
 	_, err := i.db.ExecContext(ctx, "INSERT INTO items (name, category_id, image_name) VALUES (?, ?, ?)", item.Name, item.CategoryID, item.Image)
 	if err != nil {
@@ -113,19 +68,7 @@ func (i *itemRepository) Insert(ctx context.Context, item *Item) error {
 }
 
 func (i *itemRepository) GetAllItems(ctx context.Context) ([]Item, error) {
-	// var items []*Item
-	// file, err := os.Open(i.fileName)
-	// if err != nil {
-	// 	return nil, errors.New("error opening file")
-	// }
 
-	// defer file.Close()
-	// // Decode json into items array
-	// err = json.NewDecoder(file).Decode(&items)
-	// if err != nil {
-	// 	return nil, errors.New("error decoding file")
-	// }
-	// return items, nil
 	rows, err := i.db.QueryContext(ctx, `SELECT items.id, items.name, categories.categoryname AS category, items.image_name
 	FROM items JOIN categories ON items.category_id = categories.id`)
 
@@ -149,20 +92,8 @@ func (i *itemRepository) GetAllItems(ctx context.Context) ([]Item, error) {
 	return items, nil
 }
 
+// Get single item by ID
 func (i *itemRepository) GetItem(ctx context.Context, itemID int) (*Item, error) {
-	// items, err := i.GetAllItems(ctx)
-	// if err != nil {
-	// 	return nil, errors.New("no items found")
-	// }
-	// returnItem := items[itemID]
-
-	// return returnItem, nil
-
-	// query := `SELECT items.id, items.name, categories.name, items.image_name
-	// 			FROM items
-	// 			JOIN categories ON items.category_id = categories.id
-	// 			WHERE items.id = ?`
-	// rows := i.db.QueryRowContext(ctx, query)
 
 	var item Item
 	rows := i.db.QueryRowContext(ctx, "SELECT id, name, category, image_name FROM items WHERE id = ?", itemID)
@@ -219,25 +150,6 @@ func (i *itemRepository) Search(ctx context.Context, keyword string) (*sql.Rows,
 				FROM items JOIN categories ON items.category_id = categories.id
 				WHERE items.name LIKE ?`, "%"+keyword+"%")
 
-	// if err != nil {
-	// 	return nil, errors.New("error searching item")
-	// }
-	// defer rows.Close()
-
-	// var items []Item
-	// for rows.Next() {
-	// 	var item Item
-	// 	if err := rows.Scan(&item.ID, &item.Name, &item.CategoryID, &item.Image); err != nil {
-	// 		return nil, fmt.Errorf("failed to scan item: %w", err)
-	// 	}
-	// 	items = append(items, item)
-	// }
-
-	// err = rows.Err()
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	return rows, err
 }
 
@@ -247,6 +159,7 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		return nil, errors.New("error opening database")
 	}
 
+	// create items and categories table if they do not exist
 	tables := `
 	CREATE TABLE IF NOT EXISTS categories (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
