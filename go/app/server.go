@@ -39,6 +39,10 @@ func (s Server) Run() int {
 
 	// STEP 5-1: set up the database connection
 	database, err := InitDB("db/mercari.sqlite3")
+	if err != nil {
+		slog.Error("error initializing database", "error", err)
+		return 1
+	}
 	// set up handlers
 	itemRepo := NewItemRepository(database)
 	h := &Handlers{imgDirPath: s.ImageDirPath, itemRepo: itemRepo}
@@ -219,7 +223,8 @@ func (s *Handlers) AddItem(w http.ResponseWriter, r *http.Request) {
 
 	categoryID, err := s.itemRepo.GetCategoryID(ctx, req.Category)
 	if err != nil {
-		errors.New("error retrieving category ID")
+		slog.Error("failed to find category ID", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	item := &Item{
@@ -357,23 +362,6 @@ func (s *Handlers) SearchItems(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "keyword is required", http.StatusBadRequest)
 		return
 	}
-
-	// items, err := s.itemRepo.Search(ctx, keyword)
-	// if err != nil {
-	// 	http.Error(w, "failed to search items", http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// // Send JSON response
-	// resp := struct {
-	// 	Items []Item `json:"items"`
-	// }{Items: items}
-
-	// w.Header().Set("Content-Type", "application/json")
-	// err = json.NewEncoder(w).Encode(resp)
-	// if err != nil {
-	// 	http.Error(w, "failed to encode response", http.StatusInternalServerError)
-	// }
 
 	rows, err := s.itemRepo.Search(ctx, keyword)
 	if err != nil {

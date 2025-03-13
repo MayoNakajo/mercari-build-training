@@ -154,9 +154,10 @@ func (i *itemRepository) Search(ctx context.Context, keyword string) (*sql.Rows,
 }
 
 func InitDB(dbPath string) (*sql.DB, error) {
+
 	database, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		return nil, errors.New("error opening database")
+		return nil, fmt.Errorf("error opening database: %w", err)
 	}
 
 	// create items and categories table if they do not exist
@@ -175,7 +176,7 @@ func InitDB(dbPath string) (*sql.DB, error) {
 
 	_, err = database.Exec(tables)
 	if err != nil {
-		return nil, errors.New("error creating database table")
+		return nil, fmt.Errorf("error creating database table: %w", err)
 	}
 
 	return database, nil
